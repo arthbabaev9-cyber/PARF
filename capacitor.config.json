@@ -1,0 +1,12 @@
+{
+  "appId": "com.aromas.kassa",
+  "appName": "Ароматы Касса",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#111827"
+  }
+}
