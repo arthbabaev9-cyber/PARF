@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
 interface Aroma {
@@ -15,7 +15,6 @@ interface CartItem {
 
 const VOLUMES = [5, 10, 15, 20, 30, 50];
 
-// Демо-данные на случай если файл не загружен
 const DEMO_DATA: Aroma[] = [
   { name: 'Роза Дамасская', prices: { 5: 150, 10: 280, 15: 400, 20: 520, 30: 750, 50: 1200 } },
   { name: 'Ваниль Мадагаскар', prices: { 5: 180, 10: 340, 15: 480, 20: 620, 30: 900, 50: 1450 } },
@@ -32,8 +31,18 @@ function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCart, setShowCart] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [selectedVolumes, setSelectedVolumes] = useState<{ [key: string]: number }>({});
   const [fileName, setFileName] = useState<string>('');
+
+  // Показываем инструкцию при первом запуске
+  useEffect(() => {
+    const seen = localStorage.getItem('helpSeen');
+    if (!seen) {
+      setShowHelp(true);
+      localStorage.setItem('helpSeen', 'true');
+    }
+  }, []);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +61,6 @@ function App() {
 
       if (jsonData.length < 2) return;
 
-      // Парсим заголовки - ищем объёмы
       const headers = jsonData[0] as string[];
       const volumeColumns: { [key: number]: number } = {};
       
@@ -65,7 +73,6 @@ function App() {
         });
       });
 
-      // Парсим строки с ароматами
       const parsedAromas: Aroma[] = [];
       for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i] as string[];
@@ -158,18 +165,27 @@ function App() {
               Ароматы
             </h1>
           </div>
-          <button
-            onClick={() => setShowCart(!showCart)}
-            className="relative bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <span className="text-lg">🛒</span>
-            <span className="font-medium">Корзина</span>
-            {cart.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-pink-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                {getTotalItems()}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHelp(true)}
+              className="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+              title="Инструкция"
+            >
+              <span className="text-lg">❓</span>
+            </button>
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="relative bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <span className="text-lg">🛒</span>
+              <span className="font-medium hidden sm:inline">Корзина</span>
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-pink-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -215,7 +231,140 @@ function App() {
           </div>
         </div>
 
-        {/* Cart Panel (Mobile overlay) */}
+        {/* Help Modal */}
+        {showHelp && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+            <div className="bg-gray-800 w-full max-w-md rounded-2xl border border-gray-700 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b border-gray-700 sticky top-0 bg-gray-800">
+                <h2 className="text-lg font-bold">📖 Как пользоваться</h2>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="p-4 space-y-4 text-sm">
+                <div className="bg-purple-900/30 border border-purple-700 rounded-xl p-3">
+                  <p className="font-bold text-purple-300 mb-1">📱 Установка на телефон</p>
+                  <p className="text-gray-300">
+                    Откройте эту страницу в Chrome на телефоне → нажмите <b>⋮</b> (три точки) → <b>«Добавить на главный экран»</b>. 
+                    Приложение будет работать как обычное!
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <span className="text-xl">1️⃣</span>
+                    <div>
+                      <p className="font-medium text-white">Загрузите таблицу Excel</p>
+                      <p className="text-gray-400 mt-1">
+                        Создайте Excel-файл с колонками:<br/>
+                        <code className="bg-gray-700 px-1 rounded text-xs">Название | 5 | 10 | 15 | 20 | 30 | 50</code>
+                      </p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Первая строка — заголовки, далее — ароматы и цены
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="text-xl">2️⃣</span>
+                    <div>
+                      <p className="font-medium text-white">Выберите объём</p>
+                      <p className="text-gray-400 mt-1">
+                        Для каждого аромата нажмите нужный объём (5, 10, 15, 20, 30 или 50 мл). 
+                        Цена обновится автоматически.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="text-xl">3️⃣</span>
+                    <div>
+                      <p className="font-medium text-white">Добавьте в корзину</p>
+                      <p className="text-gray-400 mt-1">
+                        Нажмите <b>«В корзину»</b> — товар добавится. Внизу экрана появится 
+                        итоговая сумма.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="text-xl">4️⃣</span>
+                    <div>
+                      <p className="font-medium text-white">Проверьте корзину</p>
+                      <p className="text-gray-400 mt-1">
+                        Нажмите 🛒 — увидите все товары, сможете изменить количество или удалить.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600">
+                  <p className="font-medium text-white mb-2">📋 Пример Excel-файла:</p>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full">
+                      <thead>
+                        <tr className="text-purple-300">
+                          <th className="text-left p-1">Название</th>
+                          <th className="p-1">5</th>
+                          <th className="p-1">10</th>
+                          <th className="p-1">15</th>
+                          <th className="p-1">20</th>
+                          <th className="p-1">30</th>
+                          <th className="p-1">50</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-300">
+                        <tr>
+                          <td className="p-1">Роза</td>
+                          <td className="p-1 text-center">150</td>
+                          <td className="p-1 text-center">280</td>
+                          <td className="p-1 text-center">400</td>
+                          <td className="p-1 text-center">520</td>
+                          <td className="p-1 text-center">750</td>
+                          <td className="p-1 text-center">1200</td>
+                        </tr>
+                        <tr>
+                          <td className="p-1">Ваниль</td>
+                          <td className="p-1 text-center">180</td>
+                          <td className="p-1 text-center">340</td>
+                          <td className="p-1 text-center">480</td>
+                          <td className="p-1 text-center">620</td>
+                          <td className="p-1 text-center">900</td>
+                          <td className="p-1 text-center">1450</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600">
+                  <p className="font-medium text-white mb-1">💡 Подсказки:</p>
+                  <ul className="text-gray-400 space-y-1 list-disc list-inside text-xs">
+                    <li>Без загрузки файла работают демо-данные (8 ароматов)</li>
+                    <li>Используйте 🔍 поиск для быстрого нахождения аромата</li>
+                    <li>Можно добавлять один аромат несколько раз</li>
+                    <li>Кнопка «Оформить» показывает итоговый чек</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-gray-700">
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-medium transition-colors"
+                >
+                  Понятно! ✓
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cart Panel */}
         {showCart && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center">
             <div className="bg-gray-800 w-full max-w-lg max-h-[85vh] rounded-t-2xl sm:rounded-2xl border border-gray-700 flex flex-col">
@@ -294,7 +443,16 @@ function App() {
                     </button>
                     <button
                       onClick={() => {
-                        alert(`Итого: ${getTotal()} ₽\nТоваров: ${getTotalItems()} шт.`);
+                        let receipt = '🧾 ЧЕК\n';
+                        receipt += '════════════════\n';
+                        cart.forEach(item => {
+                          receipt += `${item.aroma.name} (${item.volume}ml)\n`;
+                          receipt += `  ${item.quantity} × ${item.price} = ${item.price * item.quantity} ₽\n`;
+                        });
+                        receipt += '════════════════\n';
+                        receipt += `ИТОГО: ${getTotal()} ₽\n`;
+                        receipt += `Товаров: ${getTotalItems()} шт.`;
+                        alert(receipt);
                       }}
                       className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-xl font-medium transition-colors"
                     >
